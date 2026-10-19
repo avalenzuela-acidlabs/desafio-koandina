@@ -1,0 +1,8 @@
+-r requirements.txt
+# Para el notebook
+matplotlib>=3.8
+jupyter
+# Para desarrollo y tests
+pytest>=8
+ruff>=0.5
+mypy>=1.10

@@ -17,28 +17,65 @@ Solución al desafío técnico de Data Scientist Lead: auditar el pronóstico de
 ├── README.md                       Este archivo
 ├── ARCHITECTURE.md                 Arquitectura propuesta en AWS
 ├── desafio_logistica.ipynb         Notebook con las 5 tareas, ejecutable de punta a punta
+├── src/desafio_logistica/          El mismo análisis como paquete Python tipado
+│   ├── config.py                   Constantes (umbral del Gate, costos, semilla)
+│   ├── data.py                     Carga de los CSV y chequeos de calidad
+│   ├── metrics.py                  WAPE y Bias                                  (Tarea 1)
+│   ├── plan.py                     Análisis del plan de entrega                 (Tarea 2)
+│   ├── flatten.py                  Simulación de aplanamiento de la curva       (Tarea 2)
+│   ├── features.py                 Features sin fuga temporal                   (Tarea 3)
+│   ├── models.py                   Ridge, HGB y backtest de origen rodante      (Tarea 3)
+│   ├── gate.py                     Gate de 45 días y fallback                   (Tarea 4)
+│   ├── impact.py                   Flota, flete de emergencia, nivel de servicio
+│   └── cli.py                      Corre todo y guarda las tablas en CSV
+├── tests/                          Tests con pytest
 ├── data/
 │   └── data_package_desafio_logistica.zip   Los 4 CSV del desafío
 ├── docs/
 │   └── enunciado.pdf               Enunciado original
-└── presentacion/
-    ├── deck.pdf                    Presentación ejecutiva
-    ├── deck.tex                    Fuente del deck (LaTeX / Beamer)
-    └── img/                        Gráficos usados en el deck
+├── presentacion/
+│   ├── deck.pdf                    Presentación ejecutiva
+│   ├── deck.tex                    Fuente del deck (LaTeX / Beamer)
+│   └── img/                        Gráficos usados en el deck
+├── pyproject.toml                  Metadatos y dependencias del paquete
+├── requirements.txt                Dependencias de ejecución (versiones probadas)
+├── requirements-dev.txt            Ejecución + notebook + tests
+└── Dockerfile
 ```
 
 ## Cómo ejecutarlo
 
-Requiere Python 3.11 o superior y estas librerías: `pandas`, `numpy`, `scikit-learn`, `scipy`, `matplotlib`, además de `jupyter` para abrir el notebook.
+Requiere Python 3.11 o superior.
+
+### Con el paquete (recomendado)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install pandas numpy scikit-learn scipy matplotlib jupyter
+pip install -r requirements-dev.txt
+pip install -e .
+
+python -m desafio_logistica --out outputs     # corre las 5 tareas y guarda las tablas en outputs/
+pytest                                        # corre los tests
+```
+
+Por defecto lee `data/data_package_desafio_logistica.zip`. Se puede indicar otra fuente con `--data` (un zip o una carpeta con los CSV) y otra fecha de corte del Gate con `--as-of 2026-02-20`.
+
+### Con Docker
+
+```bash
+docker build -t desafio-logistica .
+docker run --rm -v "$PWD/outputs:/outputs" desafio-logistica
+```
+
+### Con el notebook
+
+```bash
+pip install -r requirements-dev.txt
 jupyter notebook desafio_logistica.ipynb
 ```
 
-El notebook lee los CSV directamente desde `data/data_package_desafio_logistica.zip`, así que no hace falta descomprimir nada.
+El notebook lee los CSV directamente desde el zip, así que no hace falta descomprimir nada.
 
 ## Dónde está cada tarea
 
@@ -59,6 +96,8 @@ El notebook lee los CSV directamente desde `data/data_package_desafio_logistica.
 - El impacto económico usa un **supuesto de tarifa** (flete de emergencia = 1,8 veces la flota planificada). Es un orden de magnitud, no un P&L. Además, corregir el sesgo no es gratis: en CD_CENTRO los fletes de emergencia suben porque la sobreestimación hacía de colchón.
 - El plan de entrega cubre 90 clientes. Sus conclusiones son indicativas.
 
-## Pendiente
+## Qué se verificó
 
-El enunciado pide además código modularizado en Python, `requirements.txt` o `pyproject.toml` y un `Dockerfile`. Hoy toda la lógica vive en el notebook; extraerla a un paquete es el siguiente paso.
+- El paquete reproduce los resultados del notebook: WAPE base de 20,73 % y de 7,19 % con el Ridge, y los mismos resultados en el barrido del umbral del Gate y en el impacto de negocio. Un test lo comprueba. El HistGradientBoosting da 6,81 % en vez de 6,86 %, por la versión más nueva de scikit-learn.
+- 17 tests (métricas, contrato del Gate, ausencia de fuga temporal y reproducción del backtest), más `ruff` y `mypy` sin avisos.
+- **Sin probar:** el `Dockerfile` no se pudo construir en la máquina donde se desarrolló, que no tenía Docker. Sus pasos se simularon en un entorno virtual limpio. Tampoco se volvió a ejecutar el notebook con las versiones de `requirements.txt`; se dejó tal cual estaba.

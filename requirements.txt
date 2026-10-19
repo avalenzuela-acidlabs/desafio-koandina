@@ -1,0 +1,5 @@
+# Dependencias de ejecución, con las versiones con las que se probó (Python 3.12)
+numpy==2.5.4
+pandas==3.0.6
+scikit-learn==1.9.1
+scipy==1.18.1
